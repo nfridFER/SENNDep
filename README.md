@@ -11,7 +11,7 @@ This repository contains a **research-oriented implementation of a Self-Explaini
 > - it is NOT approved for diagnostic or clinical decision-making
 >
 > 
-> >**The authors accept no liability for any use, misuse, or consequences arising from this code or derived results.**
+> ### **The authors accept no liability for any use, misuse, or consequences arising from this code or derived results.**
 >
 > 
 > The **intended use** of this codebase:
@@ -89,3 +89,4 @@ Please include:
 > ⚠️ Requests from commercial entities or projects intended for commercial exploitation will not be considered.
 
 --- 
+
