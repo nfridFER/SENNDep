@@ -12,9 +12,6 @@ import matplotlib.pyplot as plt
 import mne
 
 
-# ----------------------------
-# Parsing regex
-# ----------------------------
 _CONCEPT_HEADER_RE = re.compile(r"^Concept\s+(\d+):")
 _FEATURE_LINE_RE = re.compile(r"([a-z0-9_]+)\[([A-Z0-9\-]+)\].*\|r\|=([0-9.]+)")
 _PROB_RE = re.compile(r"p\(MDD\)\s*=\s*([0-9.eE+-]+)")
@@ -22,9 +19,6 @@ _CONTRIB_RE = re.compile(r"^C(\d+):\s*([+-]?[0-9.]+)")
 _SUBJECT_RE = re.compile(r"^Subject\s+(\S+)")
 
 
-# ----------------------------
-# Topomap setup
-# ----------------------------
 ALL_CHANNELS = [
     "Fp1", "Fp2", "F3", "F4", "F7", "F8", "Fz",
     "C3", "C4", "Cz", "P3", "P4", "Pz",
@@ -36,9 +30,7 @@ _info = mne.create_info(ch_names=ALL_CHANNELS, sfreq=1000.0, ch_types="eeg")
 _info.set_montage(_montage)
 
 
-# ----------------------------
-# Helpers
-# ----------------------------
+
 def _try_import_seaborn():
     try:
         import seaborn as sns  # noqa
@@ -393,7 +385,7 @@ def plot_topomap_contrib(data_vec: np.ndarray, title: str, out_pdf: Path, vmax: 
 
 
 # ----------------------------
-# Public entrypoint
+# AGGREGATOR
 # ----------------------------
 def run_motif_analysis(cfg, root_dir: Optional[str] = None) -> Dict[str, object]:
     """
@@ -526,3 +518,4 @@ def run_motif_analysis(cfg, root_dir: Optional[str] = None) -> Dict[str, object]
         "mdd_raw_csv": str(out_dir / "motifs_mdd_raw.csv"),
         "healthy_raw_csv": str(out_dir / "motifs_healthy_raw.csv"),
     }
+
