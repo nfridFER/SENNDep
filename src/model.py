@@ -30,7 +30,7 @@ class RelevanceParametrizer(nn.Module):
 
 class SENN(nn.Module):
     """
-    Self-Explaining Neural Network (simple dot-product aggregator).
+    Self-Explaining Neural Network
     Returns logit + (theta, concepts) when require_concepts=True.
     """
 
@@ -51,6 +51,6 @@ class SENN(nn.Module):
 
 
 def gradient_alignment_loss(logits, theta, concepts):
-    """Encourage d(logit)/d(concept) ≈ theta for dot-product aggregator."""
     grads = torch.autograd.grad(outputs=logits.sum(), inputs=concepts, create_graph=True)[0]
+
     return nn.functional.mse_loss(grads, theta)
