@@ -218,7 +218,7 @@ def predict_eeg_set_local(
     # --- features (REUSE training extractor) ---
     X_raw, ch_names = extract_patient_epoch_matrix(set_path, epoch_sec=epoch_sec, overlap_sec=overlap_sec)
 
-     n_ch = len(ch_ref)
+    n_ch = len(ch_ref)
     expected_full_dim = (5 * n_ch) + (10 * n_ch) + 2 + (n_ch * (n_ch - 1)) // 2 + 1
     if X_raw.shape[1] != expected_full_dim:
         raise ValueError(
@@ -496,4 +496,5 @@ def run_local_inference(
         },
         "warnings": warnings,
     }
+
 
