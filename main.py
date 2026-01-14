@@ -28,6 +28,21 @@ def _print_inference_result(demo: dict):
     if df_summary is not None:
         print("\n=== Group summary ===")
         print(df_summary)
+        print("\nTop concepts (features + motifs):")
+        for c in out["top_concepts"]:
+            cname = c.get("concept_name")
+            cname_str = f" — {cname}" if cname else ""
+            print(f"\n  C{c['concept']:02d}{cname_str}: contribution={c['contribution']:+.4f}")
+
+
+            feats = c.get("features", [])
+            if feats:
+                feats = sorted(feats, key=lambda x: x["abs_r"], reverse=True)
+                print("    Feature correlations:")
+                for f in feats:
+                    print(f"      {f['sign']} {f['feature']}  |r|={f['abs_r']:.3f}")
+            else:
+                print("    Feature correlations: (none)")
 
         saved = demo["paths"].get("saved_group_summary_csv", None)
         if saved:
@@ -128,3 +143,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
