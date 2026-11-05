@@ -1,4 +1,6 @@
+"""Notebook baseline training with unweighted mean BCE."""
 import os
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -20,6 +22,9 @@ def train_epoch_level(
         lambda_l1=0.0005,
         device=None,
 ):
+    """
+    Train on epochs; select best model by subject-level AUC on val.
+    """
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
@@ -43,7 +48,7 @@ def train_epoch_level(
 
             logits, theta, z = model(xb)
             loss_vec = bce(logits, yb)
-            loss = (loss_vec * wb.to(device)).mean() if wb is not None else loss_vec.mean()
+            loss = loss_vec.mean()
 
             total = loss + lambda_l1 * theta.abs().mean() + lambda_grad * gradient_alignment_loss(
                 logits, theta, z
@@ -53,12 +58,14 @@ def train_epoch_level(
             total.backward()
             opt.step()
 
+        # Subject-level validation
         model.eval()
         with torch.no_grad():
             logits_v, _, _ = model(torch.as_tensor(Xv, dtype=torch.float32, device=device))
             logits_v = logits_v.cpu().numpy().ravel()
 
         subj_probs = aggregate_subject_logits(logits_v, Sv, method="trimmed", trim_p=0.1)
+
         subj_list = sorted(subj_probs.keys())
         y_true = np.array([int(np.round(yv[Sv == s].mean())) for s in subj_list])
         y_hat = np.array([subj_probs[s] for s in subj_list])
