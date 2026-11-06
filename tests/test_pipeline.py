@@ -27,6 +27,7 @@ from src.features import make_epoch_feature_names
 from src.model import SENN, gradient_alignment_loss
 from src.reporting import summarize_cv_results
 from src.train import train_epoch_level
+from src.subject_explanations import export_subject_explanations
 
 
 class RevisedPipelineTests(unittest.TestCase):
@@ -171,6 +172,13 @@ class RevisedPipelineTests(unittest.TestCase):
         self.assertEqual(len(overlaps), 10)
         self.assertTrue(overlaps.jaccard.between(0, 1).all())
         np.testing.assert_allclose(overlaps.jaccard, overlaps.intersection_size / overlaps.union_size)
+        explanations, checks = export_subject_explanations(artifacts, excel, device="cpu")
+        self.assertEqual(set(checks.subject_id), set(ids))
+        self.assertEqual(len(checks), 30)
+        self.assertEqual(set(explanations.record_type), {"concept_feature", "motif"})
+        self.assertLess(checks.probability_error.max(), 1e-5)
+        self.assertLess(checks.motif_total_error.max(), 1e-5)
+        self.assertTrue((artifacts / "interpretability_analysis/subject_explanations_c5_tau0p7.csv").is_file())
 
     def _report_fixture(self):
         labels = self.root / "labels.xlsx"

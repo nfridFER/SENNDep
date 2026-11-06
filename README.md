@@ -107,18 +107,71 @@ missing folds, non-finite scores, and probabilities outside [0, 1].
 `feature_selection_jaccard_summary.txt`. Five folds yield ten comparisons,
 summarized with mean and sample SD. Fold-pair comparisons are not independent.
 
-Concept labels, subject contribution/stability summaries, motif analysis,
-topomaps, standalone inference, and F1-optimized thresholds have been removed
-because they are outside the revised notebook workflow.
+### Subject explanations
+
+After training, export additive explanations following the executable code in
+`SENN_export_subject_explanations_c50_tau07.ipynb`:
+
+```bash
+python main.py explain --excel_path /path/to/data.xlsx
+```
+
+For artifacts or caches stored elsewhere:
+
+```bash
+python main.py explain --root_dir /path/to/training_outputs \
+  --excel_path /path/to/data.xlsx --feature_cache_dir /path/to/senn_feature_cache \
+  --output_csv /path/to/subject_explanations.csv --subject_id 4079
+```
+
+No retraining or raw EEG files are needed. The exporter uses `config.json` to
+determine model size, seeds, fold count, and the feature cache path. Relative
+cache paths retain their meaning relative to the training working directory;
+use `--feature_cache_dir` if that directory or cache has moved. Each baseline
+`fold_k/` already contains the model, scaler, selector, feature names, split IDs,
+`test_subject_probs.npy`, and `concept_feature_corr_test.npy`; no ablation run or
+`shared/` directory is required. Excel metadata supplies true labels because the
+baseline prediction files contain `(REC_ID, probability)`, not the notebook's
+`(REC_ID, true_label, probability)` format.
+
+Every outer-test subject is explained once. Epochs are sorted by their logits,
+5% are removed from each tail (rounded down), and the retained epoch products
+`theta * z` are averaged directly. For each concept, features satisfying
+`abs(r) >= tau * max(abs(r))` are retained; normalized absolute correlations
+allocate that concept's signed contribution to features. Default `tau` is 0.7.
+Correlation signs/arrows are recorded independently of contribution direction.
+All concept allocations are then summed into the notebook's regional motif
+groups. Positive contributions support the MDD logit; negative contributions
+oppose it, regardless of the subject's predicted class. Predictions use 0.5.
+
+The default output is
+`<root_dir>/interpretability_analysis/subject_explanations_c50_tau0p7.csv`
+(the model dimension and tau in the name reflect actual settings). This one
+long-format CSV contains all concept-feature allocations followed by grouped
+motif rows for each subject, including signs, ranks, true labels, saved
+probabilities, epoch counts, and the actual fold training seed. `--subject_id`
+also prints the notebook's optional single-subject view. `--batch_size` controls
+inference batches (default 256); `--device cpu` forces CPU execution.
+
+Before writing, the exporter checks that concept/motif totals reconstruct the
+trimmed subject logit and its saved probability (tolerance `1e-5`) and that each
+concept's feature allocations sum to its contribution (tolerance `1e-10`).
+Missing artifacts/caches, duplicate test subjects, mismatched IDs, unsupported
+feature/channel names, and inconsistent probabilities are reported as errors.
+
+Legacy top-five concept-label files, epoch-stability summaries, motif/topomap
+plots, standalone new-recording inference, and F1-optimized thresholds remain
+outside this workflow.
 
 ## Code structure
 
-- `main.py`: train, report, and overlap commands.
+- `main.py`: train, report, overlap, and explain commands.
 - `src/data.py`, `src/features.py`: feature cache and EEG feature extraction.
 - `src/model.py`, `src/train.py`, `src/eval.py`: SENN, training, and subject evaluation.
 - `src/cv_fold.py`: outer CV and inner validation orchestration.
 - `src/artifacts.py`, `src/explain.py`: preprocessing/maps and full correlations.
 - `src/reporting.py`, `src/feature_overlap.py`: post-training analyses.
+- `src/subject_explanations.py`: additive subject concept/feature/motif CSV export.
 
 ## Validation
 
