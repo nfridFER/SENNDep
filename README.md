@@ -1,6 +1,6 @@
 # SENN model for EEG-based MDD detection
 
-The pipeline follows the executable code in `Train&Eval_rev_baseline.ipynb`:
+Training and evaluation follow the executable code in `Train&Eval_rev_baseline.ipynb`:
 outer-test cross-validation with an inner validation holdout, raw feature caching,
 complete signed concept-feature correlations, outer-test reporting, and
 feature-selection overlap analysis.
@@ -45,16 +45,47 @@ pip install -r requirements.txt
 
 ## Workflow
 
-These commands correspond to the notebook's training, reporting, and overlap
-cells. Arguments replace its hardcoded local Windows paths.
+`main.py` is the entry point for training, held-out evaluation, and inference.
+With no subcommand, it trains all folds and writes the outer-test evaluation
+report and ROC/PR plots:
+
+```bash
+python main.py --data_folder /path/to/eeg --excel_path /path/to/data.xlsx
+```
+
+To also export subject explanations, compare selected features, and predict a
+recording after training:
+
+```bash
+python main.py --data_folder /path/to/eeg --excel_path /path/to/data.xlsx \
+  --save_dir /path/to/run --feature_cache_dir /path/to/cache \
+  --explain --overlap --infer_after_train --set_path /path/to/subject.set \
+  --fold 0 --output_json /path/to/prediction.json
+```
+
+The explicit `pipeline` command does the same thing. Supplying `--set_path`
+requests inference after training; `--infer_after_train` is optional, but if
+specified it requires `--set_path`. The sequence is training (with fold-level
+validation/test evaluation), aggregate outer-test reporting, optional overlap,
+optional subject-explanation export, then optional inference. It stops if a
+stage fails.
+
+Standalone commands remain available:
 
 ```bash
 python main.py train --data_folder /path/to/eeg --excel_path /path/to/data.xlsx
-python main.py report --excel_path /path/to/data.xlsx
-python main.py overlap
+python main.py eval --root_dir /path/to/run --excel_path /path/to/data.xlsx
+python main.py infer --root_dir /path/to/run --set_path /path/to/subject.set --fold 0
+python main.py overlap --root_dir /path/to/run
 ```
 
-Each command has `--help`. Training defaults live in `src/config.py`. Outputs
+`train` runs training and fold-level evaluation without aggregate reporting.
+`eval` (also named `report`) evaluates saved outer-test probabilities without
+retraining and reads the fold count from the run's `config.json` unless explicitly
+overridden. `infer` needs neither the training dataset nor Excel metadata.
+
+Each command has `--help`; use `pipeline --help` for the complete pipeline flags.
+Training defaults live in `src/config.py`. Outputs
 default to `./artif_senn_mdd_rev_baseline`; raw features are cached in
 `./senn_feature_cache`. After changing training output paths, use matching
 `--root_dir` arguments for analysis. Likewise, pass matching `--n_folds` and
@@ -159,13 +190,45 @@ concept's feature allocations sum to its contribution (tolerance `1e-10`).
 Missing artifacts/caches, duplicate test subjects, mismatched IDs, unsupported
 feature/channel names, and inconsistent probabilities are reported as errors.
 
-Legacy top-five concept-label files, epoch-stability summaries, motif/topomap
-plots, standalone new-recording inference, and F1-optimized thresholds remain
-outside this workflow.
+### Inference on a new recording
+
+```bash
+python main.py infer --root_dir /path/to/run --set_path /path/to/subject.set \
+  --fold 0 --output_json /path/to/prediction.json
+```
+
+The original inference-only invocation is also supported:
+
+```bash
+python main.py --infer_only --save_dir /path/to/run --set_path /path/to/subject.set
+```
+
+Inference loads the selected fold's checkpoint, scaler, selector, channels,
+selected feature names, and training concept-feature correlations. Epoch duration,
+overlap, and model dimension come from the saved configuration. Channel names and
+order must match training exactly. The extractor retains the training method's
+300-second crop, so new recordings must be long enough and keep any `.fdt`
+companion files. Preprocessing is transformed without refitting.
+
+The prediction uses the notebook's trimmed-logit aggregation, a fixed 0.5
+threshold, and the same retained-epoch mean of `theta * z` for concept
+contributions. Feature allocations and motifs use the notebook's tau rule but
+derive their signatures from **inner training correlations**, rather than
+outer-test correlations. All concept/feature/motif contributions are included
+in the optional JSON; the console prints probability, label, confidence, and the
+top five concepts/motifs. Confidence remains the existing distance-from-0.5 proxy.
+Use `--batch_size` for standalone inference or `--inference_batch_size` for the
+combined pipeline (both default to 256), and `--device cpu` to force CPU.
+
+One saved fold is used, not an ensemble. An optional recording supplied after
+training is a separate prediction and does not enter the outer-test report.
+Legacy concept-label text files, epoch-stability summaries, motif/topomap plots,
+and F1-optimized thresholds remain outside this workflow.
 
 ## Code structure
 
-- `main.py`: train, report, overlap, and explain commands.
+- `main.py`: combined pipeline and standalone train/eval/infer/report/overlap/explain commands.
+- `src/pipeline.py`, `src/inference.py`: stage orchestration and new-recording inference.
 - `src/data.py`, `src/features.py`: feature cache and EEG feature extraction.
 - `src/model.py`, `src/train.py`, `src/eval.py`: SENN, training, and subject evaluation.
 - `src/cv_fold.py`: outer CV and inner validation orchestration.
